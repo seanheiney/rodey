@@ -30,10 +30,7 @@ rodey-mcp = "rodey.mcp_server:main"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/rodey"]
-artifacts = ["src/rodey/data/*.json"]
 
-[tool.hatch.build.targets.wheel.force-include]
-"src/rodey/data" = "rodey/data"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
