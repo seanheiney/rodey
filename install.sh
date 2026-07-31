@@ -8,6 +8,10 @@
 #
 set -euo pipefail
 
+# run from a guaranteed-readable dir; never depend on the caller's CWD
+# (e.g. brew refuses to run if the CWD is unreadable)
+cd "${TMPDIR:-/tmp}" 2>/dev/null || cd /
+
 REPO="seanheiney/rodey"
 BRANCH="${RODEY_BRANCH:-main}"
 PREFIX="${RODEY_PREFIX:-$HOME/.local}"
