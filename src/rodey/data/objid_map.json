@@ -1,0 +1,367 @@
+{
+  "0x06": [
+    "encoderColour",
+    "encoderPressed",
+    "encoderSignal"
+  ],
+  "0x07": [
+    "screenBrightness",
+    "screenTouched",
+    "selectedBank"
+  ],
+  "0x09": [
+    "headphoneType"
+  ],
+  "0x0a": [
+    "headphoneType"
+  ],
+  "0x0d": [
+    "outputMonAutoMuteActive",
+    "outputMonLevel",
+    "recordingMultitrackMode"
+  ],
+  "0x0e": [
+    "masterCompellorOn",
+    "masterDelayOn"
+  ],
+  "0x0f": [
+    "assignableMeterSource",
+    "systemChannelSelected",
+    "systemMidiControl",
+    "systemMixSelected",
+    "transferModeType"
+  ],
+  "0x1c": [
+    "channelOutputMute",
+    "compressorOn",
+    "hpfFrequency",
+    "hpfOn",
+    "hpfSlope",
+    "noiseGateHysteresis",
+    "noiseGateOn",
+    "noiseGateRange",
+    "noiseGateThreshold"
+  ],
+  "0x1d": [
+    "aphexAEMix",
+    "aphexBBDrive",
+    "channelCurrentFxPreset",
+    "channelDepth",
+    "channelOutputMute",
+    "channelPunch",
+    "channelSparkle",
+    "compressorGain",
+    "compressorThreshold",
+    "deesserThreshold",
+    "eqHighGain",
+    "eqLowGain",
+    "eqMidGain",
+    "noiseGateRange",
+    "noiseGateThreshold"
+  ],
+  "0x1e": [
+    "channelOutputMute"
+  ],
+  "0x1f": [
+    "aphexOn",
+    "channelBypassProcessing",
+    "channelOutputMute",
+    "channelPanOn",
+    "deesserOn"
+  ],
+  "0x20": [
+    "channelBypassProcessing",
+    "channelOutputMute"
+  ],
+  "0x21": [
+    "channelOutputMute"
+  ],
+  "0x22": [
+    "channelBypassProcessing",
+    "channelCueEnable",
+    "channelDepth",
+    "channelOutputMute",
+    "channelPunch",
+    "channelSparkle"
+  ],
+  "0x25": [
+    "channelAdvancedProcessing"
+  ],
+  "0x27": [
+    "echoDecay",
+    "echoDelay",
+    "echoHighCut",
+    "echoLowCut",
+    "echoMix"
+  ],
+  "0x38": [
+    "outputMixMinus"
+  ],
+  "0x4c": [
+    "mixMute"
+  ],
+  "0x4d": [
+    "mixMute"
+  ],
+  "0x4e": [
+    "mixMute"
+  ],
+  "0x4f": [
+    "mixMute"
+  ],
+  "0x50": [
+    "mixMute"
+  ],
+  "0x51": [
+    "mixMute"
+  ],
+  "0x52": [
+    "mixMute"
+  ],
+  "0x53": [
+    "mixMute"
+  ],
+  "0x54": [
+    "mixMute"
+  ],
+  "0x55": [
+    "mixMute"
+  ],
+  "0x56": [
+    "mixMute"
+  ],
+  "0x57": [
+    "mixMute"
+  ],
+  "0x58": [
+    "mixMute"
+  ],
+  "0x59": [
+    "mixMute"
+  ],
+  "0x5a": [
+    "mixMute"
+  ],
+  "0x5b": [
+    "mixMute"
+  ],
+  "0x5c": [
+    "mixMute"
+  ],
+  "0x5d": [
+    "mixMute"
+  ],
+  "0x5e": [
+    "mixMute"
+  ],
+  "0x5f": [
+    "mixMute"
+  ],
+  "0x60": [
+    "mixMute"
+  ],
+  "0x61": [
+    "mixMute"
+  ],
+  "0x62": [
+    "mixMute"
+  ],
+  "0x63": [
+    "mixMute"
+  ],
+  "0x64": [
+    "mixMute"
+  ],
+  "0x65": [
+    "mixMute"
+  ],
+  "0xa7": [
+    "mixMute"
+  ],
+  "0xa8": [
+    "mixMute"
+  ],
+  "0xa9": [
+    "mixMute"
+  ],
+  "0xaa": [
+    "mixMute"
+  ],
+  "0xab": [
+    "mixMute"
+  ],
+  "0xac": [
+    "mixMute"
+  ],
+  "0xad": [
+    "mixMute"
+  ],
+  "0xaf": [
+    "mixMute"
+  ],
+  "0xb0": [
+    "mixMute"
+  ],
+  "0xb1": [
+    "mixMute"
+  ],
+  "0xb2": [
+    "mixMute"
+  ],
+  "0xb3": [
+    "mixMute"
+  ],
+  "0xb4": [
+    "mixMute"
+  ],
+  "0xb5": [
+    "mixMute"
+  ],
+  "0xb6": [
+    "mixMute"
+  ],
+  "0xb7": [
+    "mixMute"
+  ],
+  "0xb8": [
+    "mixMute"
+  ],
+  "0xb9": [
+    "mixMute"
+  ],
+  "0xba": [
+    "mixMute"
+  ],
+  "0xbb": [
+    "mixMute"
+  ],
+  "0xbc": [
+    "mixMute"
+  ],
+  "0xbd": [
+    "mixMute"
+  ],
+  "0xbe": [
+    "mixMute"
+  ],
+  "0xbf": [
+    "mixMute"
+  ],
+  "0xc0": [
+    "mixMute"
+  ],
+  "0xc1": [
+    "mixMute"
+  ],
+  "0xc2": [
+    "mixMute"
+  ],
+  "0xc3": [
+    "mixMute"
+  ],
+  "0xc4": [
+    "mixMute"
+  ],
+  "0xc5": [
+    "mixMute"
+  ],
+  "0xc6": [
+    "mixMute"
+  ],
+  "0xc7": [
+    "mixMute"
+  ],
+  "0xc9": [
+    "mixMute"
+  ],
+  "0xca": [
+    "mixMute"
+  ],
+  "0xcb": [
+    "mixMute"
+  ],
+  "0xcc": [
+    "mixMute"
+  ],
+  "0xcd": [
+    "mixMute"
+  ],
+  "0xce": [
+    "mixMute"
+  ],
+  "0xcf": [
+    "mixMute"
+  ],
+  "0xd0": [
+    "mixMute"
+  ],
+  "0xd1": [
+    "mixMute"
+  ],
+  "0xd2": [
+    "mixMute"
+  ],
+  "0xd3": [
+    "mixMute"
+  ],
+  "0xd4": [
+    "mixMute"
+  ],
+  "0xd5": [
+    "mixMute"
+  ],
+  "0xd6": [
+    "mixMute"
+  ],
+  "0xd7": [
+    "mixMute"
+  ],
+  "0xd8": [
+    "mixMute"
+  ],
+  "0xd9": [
+    "mixMute"
+  ],
+  "0xda": [
+    "mixMute"
+  ],
+  "0xdb": [
+    "mixMute"
+  ],
+  "0xdc": [
+    "mixMute"
+  ],
+  "0xdd": [
+    "mixMute"
+  ],
+  "0xde": [
+    "mixMute"
+  ],
+  "0xdf": [
+    "mixMute"
+  ],
+  "0xe0": [
+    "mixMute"
+  ],
+  "0xe1": [
+    "mixMute"
+  ],
+  "0xe2": [
+    "mixMute"
+  ],
+  "0xe3": [
+    "mixMute"
+  ],
+  "0xe4": [
+    "mixMute"
+  ],
+  "0xe5": [
+    "mixMute"
+  ],
+  "0xe6": [
+    "mixMute"
+  ],
+  "0xe7": [
+    "mixMute"
+  ]
+}
