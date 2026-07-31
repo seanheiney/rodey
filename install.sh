@@ -107,8 +107,8 @@ check_path() {
     *)
       warn "$BIN_DIR is not on your PATH"
       local rc; rc="$HOME/.zshrc"; [ -n "${BASH_VERSION:-}" ] && rc="$HOME/.bashrc"
-      printf '  add it with:\n    ${B}echo '\''export PATH="%s:$PATH"'\'' >> %s && source %s${X}\n' \
-        "$BIN_DIR" "$rc" "$rc"
+      printf "  add it with:\n"
+      printf "    ${B}echo 'export PATH=\"%s:\$PATH\"' >> %s && source %s${X}\n" "$BIN_DIR" "$rc" "$rc"
       ;;
   esac
 }
