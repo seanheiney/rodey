@@ -2,7 +2,14 @@
 
 *Like a roadie who runs the gear — but for your RØDECaster.*
 
-Unofficial Python library, CLI and **MCP server** for the RØDECaster Pro II.
+Unofficial Python library, CLI and **MCP server** for the **RØDECaster Pro II**.
+Control the board from code — mutes, routing, per-channel processing, full state
+reads — over its USB HID interface. RØDE publishes no host API; this protocol was
+reverse-engineered by observing RØDE's own app and the device's own notifications,
+then verified against hardware. See [docs/PROTOCOL.md](docs/PROTOCOL.md).
+
+> ⚠️ **Unofficial and not affiliated with RØDE.** Developed against firmware **1.7.3**.
+> A firmware update may change the protocol. Read the safety notes below before writing.
 
 ## Install
 
@@ -10,50 +17,82 @@ Unofficial Python library, CLI and **MCP server** for the RØDECaster Pro II.
 curl -fsSL https://raw.githubusercontent.com/seanheiney/rodey/main/install.sh | bash
 ```
 
-macOS or Linux. Installs into an isolated environment, pulls in `hidapi`, and (on
-Linux) adds a udev rule for non-root access. Then:
+macOS or Linux. One paste: it finds a suitable Python (3.9+), installs `hidapi`,
+sets up an isolated environment, adds `rodey` to your PATH, and (on Linux) installs a
+udev rule for non-root HID access. Re-runnable; upgrades in place.
 
 ```sh
-rodey channels          # what's patched to each strip
+rodey channels                 # what's patched to each strip
+rodey get noiseGateOn          # a value across all channels
+rodey set 0x1c noiseGateOn on  # write, then auto-verify
 ```
 
-RØDE ships no host API — the board is configured on its touchscreen or through their
-GUI app. This talks to it directly over its vendor USB HID interface, using a protocol
-reverse-engineered by **observing RØDE's own app**, not by guessing.
+## What you can do
 
-> **Alpha, unofficial, and not affiliated with RØDE.** Developed against firmware
-> **1.7.3**. Read [docs/PROTOCOL.md](docs/PROTOCOL.md) — especially the safety section —
-> before writing anything to your board.
+| Area | Status | Notes |
+|------|--------|-------|
+| **Read all device state** | ✅ | 139 KB snapshot, 49 groups, 533 properties, in ~1 s |
+| **Channel mutes** | ✅ | per strip; inverted polarity handled for you |
+| **Mix-bus routing matrix** | ✅ | mute any source on any of 13 buses — this is mix-minus scoping |
+| **Per-channel processing** | ✅ | noise gate, HPF, compressor, de-esser, Aphex, EQ, pan |
+| **Master channel** | ✅ | Compellor, delay |
+| **Outputs / monitor / headphones** | ✅ | levels and mutes |
+| **Enable MIDI control** | ✅ | flips the board's documented MIDI surface on over HID |
+| **Verified writes** | ✅ | every write is confirmed by a state-dump diff |
+| **MCP server** | ✅ | drive the board from an AI agent |
 
-## Why
+### What we figured out (the protocol)
 
-The board exposes a rich control surface — per-channel noise gate, compressor,
-de-esser, HPF, Aphex processing, faders, mutes, routing — that is otherwise only
-reachable by tapping a touchscreen. This makes it scriptable, and lets an AI agent
-drive it through MCP.
+All of this is documented in [docs/PROTOCOL.md](docs/PROTOCOL.md) and encoded in the library:
 
-## Install from PyPI / source
+- **Handshake** — `'N'` on report 1 + a session-open on report 3. Nothing works without
+  it; it also triggers the full state dump.
+- **Frame format** — a length-prefixed, name-addressed record with five value types
+  (bool, uint32, float64, string), shared by reads and writes.
+- **Reads** — the dump must be drained *immediately* after subscribing; any pause drops
+  the head of the tree (this cost hours and produced several wrong theories).
+- **Channel addressing** — `objID = 0x1C + strip`. One object is a whole channel's
+  processing block. Verified on 7 of 10 strips, then predicted and confirmed.
+- **Mix-bus matrix** — `objID = 0x4C + 13·source + bus`, keyed by input source, not
+  strip position. 106 objects mapped.
+- **Two value conventions** — faders/pots are `uint32` 0–127 (and publish their own
+  bounds); everything else is `float64` 0–1.
+- **Inverted mute polarity** — `channelOutputMute = False` means *muted*. The library
+  wraps this so you never have to remember it.
 
-```bash
-pip install rodey          # library + CLI
-pip install 'rodey[mcp]'   # plus the MCP server
-```
+### What is **not** possible
 
-Requires `hidapi` (`brew install hidapi` on macOS, `libhidapi-dev` on Debian/Ubuntu).
-On Linux you will also need a udev rule for non-root access.
+Documented so nobody re-derives them the hard way:
 
-## CLI
+- **Writing fader levels.** The faders are physical and **not motorised** — a written
+  value would disagree with the slider position, so the device refuses it. RØDE's own app
+  can't do it either, and MIDI CC doesn't reach them. Faders are **read-only**; drive gain
+  through channel processing instead.
+- **Live metering over our subscription.** Real-time meters only stream when RØDE's app
+  drives the board; our session-open yields the state dump but not the meter feed. Meter
+  *values* are still readable from the dump.
+- **Float parameters in real units.** `noiseGateThreshold = 0.5` writes and reads back
+  reliably, but the 0–1 → dB/Hz/ms mapping is unknown — these properties publish no
+  bounds. Values are settable; their engineering meaning is not yet decoded.
+- **SSH without flashing firmware.** The board runs Linux with SSH enabled, but only the
+  vendor's *public* keys ship in the firmware. Getting a shell requires building and
+  flashing custom firmware (high brick risk); not something this tool does.
 
-```bash
-rodey channels                       # what is patched to each strip
-rodey get noiseGateOn                # value per channel
-rodey list -f gate                   # discover property names
-rodey set 0x1c noiseGateOn on        # write, then verify
-rodey watch                          # live changes from the board
-```
+## Safety
 
-Reads take about 11 seconds. That isn't a bug: the handshake makes the device
-serialise its entire state tree (~138 KB), and that dump *is* the read channel.
+The library refuses dangerous writes rather than trusting the caller:
+
+- **Firmware mode bytes.** Report 1 accepts only `0x4E` (`'N'`). `0x4D` (`'M'`) enters
+  firmware update mode and `0x55` (`'U'`) triggers a flash — both have blanked a board.
+  Anything but `0x4E` is refused. (A popular third-party project probes `0x55` as a
+  "ping" — it is not.)
+- **Destructive properties** — device reset, SD erase, firmware flash, show delete — are
+  refused by `encode_write`.
+- **Never sweep object IDs.** Writing an unknown property to a guessed ID permanently adds
+  that property to the object. IDs are harvested from observed traffic, never probed;
+  there is deliberately no scanner.
+- **Don't verify writes by ear.** A condenser's noise floor drifts several dB; verify with
+  the state dump instead (the library does this for you).
 
 ## Library
 
@@ -61,74 +100,45 @@ serialise its entire state tree (~138 KB), and that dump *is* the read channel.
 from rodey import Rodecaster
 
 with Rodecaster() as rc:
-    print(rc.get("channelInputSource"))          # [0, 1, 10, 7, 8, ...]
-    print(rc.get("noiseGateOn"))                 # [False, False, ...]
+    print(rc.strip_sources())          # [0, 1, 10, 7, 8, ...] channelInputSource codes
+    print(rc.muted())                  # [False, True, ...] per strip, polarity handled
 
-    if rc.set_verified(0x1C, "noiseGateOn", True):
-        print("gate on")
+    rc.set_muted(3, True)              # mute strip 3
+    rc.set_channel(0, "noiseGateOn", True)     # objID resolved from strip index
+
+    if rc.set_verified(0x1C, "hpfOn", True):   # write, confirmed by dump diff
+        print("high-pass on")
+
+    snap = rc.snapshot()               # {GROUP: {property: [per-strip values]}}
 ```
-
-`set_verified` diffs the state dump before and after. Prefer it over `set`: the device
-**does not echo writes back to the handle that made them**, so nothing else confirms a
-write actually landed.
 
 ## MCP server
 
-```bash
+```sh
 rodey-mcp
 ```
 
 ```json
-{
-  "mcpServers": {
-    "rodey": { "command": "rodey-mcp" }
-  }
-}
+{ "mcpServers": { "rodey": { "command": "rodey-mcp" } } }
 ```
 
-Tools: `get_property`, `set_property`, `list_properties`, `list_known_objects`,
-`watch_changes`. Every write is verified and reports whether it landed. No tool can
-reach the mode-command channel, and there is deliberately no objID scanner.
+Tools: `get_property`, `set_property` (verified), `list_properties`, `list_known_objects`,
+`watch_changes`. No tool can reach the firmware-mode channel; there is no objID scanner.
 
-## Safety
+## Extending the object map
 
-Two things will damage or disrupt a board. Both are enforced in code, not left to
-documentation:
+`docs/PROTOCOL.md` explains the capture procedure. `tools/harvest_objids.py` parses
+writes made by RØDE's app; `tools/capture_board.py` listens while you operate physical
+controls. Both are pure observation — contributions of harvested IDs are welcome.
 
-**Report 1 carries firmware commands.** `0x4D` (`'M'`) enters firmware update mode and
-`0x55` (`'U'`) triggers a flash. This library refuses every byte there except `0x4E`.
-Note that a widely-linked open-source project probes `0x55` as a "ping" — it is not a
-ping.
+## Development
 
-**Never sweep object IDs.** Writing `noiseGateOn` across `0x1c`–`0x33` permanently added
-that property to objects that never had it (24 occurrences afterwards, versus 10 for an
-untouched control). Object IDs must be harvested from observed writes — see
-`tools/harvest_objids.py`.
-
-Also: **don't verify writes by measuring audio.** A condenser's noise floor drifts
-several dB on its own, which produced two opposite wrong conclusions during
-development. Diff the state dump instead.
-
-## Status
-
-| | |
-|---|---|
-| Handshake | ✅ solved |
-| Read (state dump, 534 properties / 49 groups) | ✅ solved |
-| Writes | ✅ verified by dump diff |
-| Object-ID map | ✅ channels + mix-bus matrix solved; 104 objects mapped |
-| Parameter semantics (0..1 → dB) | 🚧 unknown |
-| Fader writes | ⛔ not possible — faders are physical and not motorised |
-
-Two addressing formulas cover most of the device:
-
-```python
-channel_object_id(strip)            # 0x1C + strip        - all channel processing
-mix_mute_object_id(source, bus)     # 0x4C + 13*source+bus - the routing matrix
+```sh
+git clone https://github.com/seanheiney/rodey && cd rodey
+python3 -m venv .venv && . .venv/bin/activate
+pip install -e '.[dev]'
+pytest            # 56 tests, no hardware required
 ```
-
-Contributions of harvested object IDs are welcome — see
-[docs/PROTOCOL.md](docs/PROTOCOL.md) and `tools/`.
 
 ## License
 
