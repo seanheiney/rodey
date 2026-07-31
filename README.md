@@ -17,9 +17,19 @@ then verified against hardware. See [docs/PROTOCOL.md](docs/PROTOCOL.md).
 curl -fsSL https://raw.githubusercontent.com/seanheiney/rodey/main/install.sh | bash
 ```
 
-macOS or Linux. One paste: it finds a suitable Python (3.9+), installs `hidapi`,
-sets up an isolated environment, adds `rodey` to your PATH, and (on Linux) installs a
-udev rule for non-root HID access. Re-runnable; upgrades in place.
+macOS or Linux. One paste, no other setup. The installer handles every dependency:
+
+- finds a suitable **Python** (3.9+); it does not install Python — if none is found it
+  tells you and stops
+- installs the **hidapi** native library via your package manager (Homebrew / apt / dnf /
+  pacman) and the Python `hidapi` binding
+- creates an **isolated venv** under `~/.local/share/rodey` (nothing touches system Python)
+- adds `rodey` to your **PATH** and, on **Linux**, installs a **udev rule** for non-root
+  HID access
+- installs the **MCP server** too when Python is **3.10+** (the `mcp` package requires it);
+  on 3.9 the CLI still installs and MCP is skipped
+
+No `git` required — it installs from a source tarball. Re-runnable; upgrades in place.
 
 ```sh
 rodey channels                 # what's patched to each strip
