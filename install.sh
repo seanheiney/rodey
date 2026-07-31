@@ -1,12 +1,27 @@
 #!/usr/bin/env bash
 #
-#  rodey installer  —  curl -fsSL https://rodey.sh | bash
-#  (or: curl -fsSL https://raw.githubusercontent.com/seanheiney/rodey/main/install.sh | bash)
+#  rodey installer / updater / uninstaller
+#  curl -fsSL https://raw.githubusercontent.com/seanheiney/rodey/main/install.sh | bash
 #
-#  Installs the `rodey` CLI + MCP server for the RØDECaster Pro II into an
-#  isolated environment. Safe to re-run; it upgrades in place.
+#  Subcommands (default: install):
+#    install     install or upgrade rodey into an isolated environment
+#    update      pull the latest rodey into the existing environment
+#    uninstall   remove rodey, its PATH entry, and (Linux) its udev rule
+#
+#  After install, these are also available as:
+#    rodey-update       rodey-uninstall
 #
 set -euo pipefail
+
+# Resolve our own path BEFORE cd'ing away, so install_self can copy this file.
+# When piped (curl | bash) BASH_SOURCE isn't a real file — leave SCRIPT_FILE empty
+# and install_self will fetch a fresh copy from SELF_URL instead.
+_src="${BASH_SOURCE[0]:-}"
+case "$_src" in
+  ""|bash|*/bash|main) SCRIPT_FILE="" ;;
+  *) SCRIPT_FILE="$(cd "$(dirname "$_src")" 2>/dev/null && pwd)/$(basename "$_src")"
+     [ -f "$SCRIPT_FILE" ] || SCRIPT_FILE="" ;;
+esac
 
 # run from a guaranteed-readable dir; never depend on the caller's CWD
 # (e.g. brew refuses to run if the CWD is unreadable)
@@ -43,16 +58,50 @@ detect_os() {
   esac
 }
 
-need_python() {
-  # find a python >= 3.10
-  for py in python3.13 python3.12 python3.11 python3.10 python3.9 python3; do
-    if command -v "$py" >/dev/null 2>&1; then
-      if "$py" -c 'import sys; sys.exit(0 if sys.version_info>=(3,9) else 1)' 2>/dev/null; then
-        PYTHON="$py"; return 0
-      fi
+MIN="3.10"                       # target: Python 3.10+ (also what the MCP server needs)
+
+find_python() {                  # sets PYTHON if a >=3.10 interpreter exists
+  local py
+  for py in python3.13 python3.12 python3.11 python3.10 python3; do
+    command -v "$py" >/dev/null 2>&1 || continue
+    if "$py" -c 'import sys; sys.exit(0 if sys.version_info>=(3,10) else 1)' 2>/dev/null; then
+      PYTHON="$py"; return 0
     fi
   done
   return 1
+}
+
+install_python() {               # install a modern Python via the OS package manager
+  step "installing Python 3.10+ …"
+  if [ "$OS" = mac ]; then
+    command -v brew >/dev/null 2>&1 || die "Homebrew is required to install Python on macOS: https://brew.sh"
+    brew install python@3.12 >/dev/null 2>&1 || brew install python >/dev/null
+    # make sure the freshly-installed python is on PATH for this run
+    local pfx; pfx="$(brew --prefix 2>/dev/null)"; [ -n "$pfx" ] && export PATH="$pfx/bin:$PATH"
+  elif command -v apt-get >/dev/null 2>&1; then
+    sudo apt-get update -qq
+    sudo apt-get install -y -qq python3 python3-venv python3-pip \
+      || sudo apt-get install -y -qq python3.12 python3.12-venv \
+      || sudo apt-get install -y -qq python3.11 python3.11-venv
+  elif command -v dnf >/dev/null 2>&1; then
+    sudo dnf install -y -q python3 python3-pip || sudo dnf install -y -q python3.12
+  elif command -v pacman >/dev/null 2>&1; then
+    sudo pacman -S --noconfirm --needed python
+  else
+    die "no supported package manager to install Python. Install Python 3.10+ and re-run."
+  fi
+}
+
+ensure_python() {                # guarantee PYTHON points at a >=3.10 interpreter
+  if find_python; then
+    ok "python: $($PYTHON --version 2>&1)"
+    return 0
+  fi
+  warn "Python $MIN+ not found"
+  install_python
+  find_python || die "installed Python but still can't find a $MIN+ interpreter on PATH.
+  Open a new terminal and re-run, or install Python $MIN+ manually."
+  ok "python: $($PYTHON --version 2>&1) (installed)"
 }
 
 install_hidapi() {
@@ -151,41 +200,136 @@ configure_path() {
 
 verify() {
   if "$VENV/bin/rodey" --help >/dev/null 2>&1 || "$VENV/bin/python" -c 'import rodey' 2>/dev/null; then
-    ok "rodey installed"
+    ok "rodey ready"
   else
-    die "install completed but rodey failed to run — please open an issue"
+    die "completed but rodey failed to run — please open an issue"
   fi
 }
 
-main() {
+installed_version() {
+  "$VENV/bin/python" -c 'import rodey; print(rodey.__version__)' 2>/dev/null || echo "?"
+}
+
+# Save this script + thin wrappers so update/uninstall work without the curl URL.
+install_self() {
+  local self="$APP_DIR/install.sh"
+  if [ -n "$SCRIPT_FILE" ] && [ -f "$SCRIPT_FILE" ]; then
+    cp "$SCRIPT_FILE" "$self"
+  else
+    curl -fsSL "$SELF_URL" -o "$self"   # piped from curl: fetch our own copy
+  fi
+  chmod +x "$self"
+  cat > "$BIN_DIR/rodey-update"    <<EOF
+#!/usr/bin/env bash
+exec bash "$self" update "\$@"
+EOF
+  cat > "$BIN_DIR/rodey-uninstall" <<EOF
+#!/usr/bin/env bash
+exec bash "$self" uninstall "\$@"
+EOF
+  chmod +x "$BIN_DIR/rodey-update" "$BIN_DIR/rodey-uninstall"
+}
+
+# ── subcommands ───────────────────────────────────────────────────────────────
+cmd_install() {
   banner
   detect_os
-  need_python || die "Python 3.9+ is required. Install it, then re-run this."
-  ok "python: $($PYTHON --version 2>&1)"
+  ensure_python
   install_hidapi
   install_udev_rule
   install_rodey
+  install_self
   verify
   configure_path
-  printf "\n${G}${B}done.${X}\n"
+  printf "\n${G}${B}done.${X} rodey $(installed_version)\n"
   if [ "$ON_PATH_ALREADY" = 1 ]; then
-    printf "try it now:\n"
-    printf "    ${B}rodey channels${X}      ${DIM}# what's patched to each strip${X}\n\n"
+    printf "try it now:\n    ${B}rodey channels${X}      ${DIM}# what's patched to each strip${X}\n\n"
   elif [ "$PATH_CONFIGURED" = 1 ]; then
     printf "added ${B}rodey${X} to your PATH. start a new terminal, or run:\n"
     printf "    ${B}export PATH=\"$BIN_DIR:\$PATH\"${X}\n"
-    printf "then:\n"
-    printf "    ${B}rodey channels${X}      ${DIM}# what's patched to each strip${X}\n\n"
+    printf "then:\n    ${B}rodey channels${X}\n\n"
   else
-    printf "run it via its full path (PATH not modified):\n"
-    printf "    ${B}$BIN_DIR/rodey channels${X}\n\n"
+    printf "run it via its full path (PATH not modified):\n    ${B}$BIN_DIR/rodey channels${X}\n\n"
   fi
+  printf "${DIM}  update:     rodey-update       (or re-run this installer)${X}\n"
+  printf "${DIM}  uninstall:  rodey-uninstall${X}\n"
   if [ "$HAS_MCP" = 1 ]; then
-    printf "${DIM}  more:  rodey --help   |   MCP: add {\"command\":\"rodey-mcp\"} to your client config${X}\n"
-  else
-    printf "${DIM}  more:  rodey --help   |   MCP server needs Python 3.10+ (not installed)${X}\n"
+    printf "${DIM}  MCP:        add {\"command\":\"rodey-mcp\"} to your client config${X}\n"
   fi
   printf "${DIM}  unofficial; not affiliated with RØDE. firmware 1.7.x${X}\n\n"
+}
+
+cmd_update() {
+  banner
+  detect_os
+  [ -d "$VENV" ] || die "rodey isn't installed here. Run the installer first."
+  local before; before="$(installed_version)"
+  ensure_python          # also upgrades to 3.10+ if the box has aged out
+  step "updating rodey (was $before) …"
+  "$VENV/bin/pip" install --quiet --upgrade "$TARBALL"
+  if "$VENV/bin/python" -c 'import sys; sys.exit(0 if sys.version_info>=(3,10) else 1)'; then
+    "$VENV/bin/pip" install --quiet --upgrade "mcp>=1.0,<2" 2>/dev/null \
+      && "$VENV/bin/python" -c 'import mcp.server.fastmcp' 2>/dev/null && HAS_MCP=1 || true
+  fi
+  ln -sf "$VENV/bin/rodey" "$BIN_DIR/rodey"
+  [ "$HAS_MCP" = 1 ] && [ -e "$VENV/bin/rodey-mcp" ] && ln -sf "$VENV/bin/rodey-mcp" "$BIN_DIR/rodey-mcp"
+  install_self
+  verify
+  local after; after="$(installed_version)"
+  if [ "$before" = "$after" ]; then
+    printf "\n${G}${B}up to date.${X} rodey $after\n\n"
+  else
+    printf "\n${G}${B}updated.${X} rodey $before → $after\n\n"
+  fi
+}
+
+cmd_uninstall() {
+  banner
+  detect_os
+  step "removing commands from $BIN_DIR"
+  rm -f "$BIN_DIR/rodey" "$BIN_DIR/rodey-mcp" "$BIN_DIR/rodey-update" "$BIN_DIR/rodey-uninstall"
+  step "removing $APP_DIR"
+  rm -rf "$APP_DIR"
+  # strip the PATH line (and the blank line above it) from any rc file we touched
+  local f removed=0
+  for f in "$HOME/.zshrc" "$HOME/.bashrc" "$HOME/.bash_profile" "$HOME/.profile"; do
+    [ -f "$f" ] || continue
+    if grep -Fq "added by rodey installer" "$f" 2>/dev/null; then
+      # delete the marker line and an immediately-preceding blank line
+      "${PYTHON:-python3}" - "$f" <<'PY' 2>/dev/null || sed -i.bak '/added by rodey installer/d' "$f"
+import sys
+p=sys.argv[1]; L=open(p).read().splitlines()
+out=[]
+for ln in L:
+    if "added by rodey installer" in ln:
+        if out and out[-1].strip()=="": out.pop()
+        continue
+    out.append(ln)
+open(p,"w").write("\n".join(out)+"\n")
+PY
+      removed=1
+    fi
+  done
+  [ "$removed" = 1 ] && ok "removed rodey's PATH entry (open a new terminal to refresh)"
+  if [ "$OS" = linux ] && [ -f /etc/udev/rules.d/70-rodecaster.rules ]; then
+    step "removing udev rule (sudo)…"
+    sudo rm -f /etc/udev/rules.d/70-rodecaster.rules
+    sudo udevadm control --reload-rules 2>/dev/null || true
+  fi
+  printf "\n${G}${B}uninstalled.${X} the hidapi library was left in place.\n\n"
+}
+
+SELF_URL="https://raw.githubusercontent.com/$REPO/$BRANCH/install.sh"
+
+main() {
+  case "${1:-install}" in
+    install|"")          cmd_install ;;
+    update|upgrade)      cmd_update ;;
+    uninstall|remove)    cmd_uninstall ;;
+    -h|--help|help)
+      printf "usage: install.sh [install|update|uninstall]\n" ;;
+    *) die "unknown command: $1  (use: install | update | uninstall)" ;;
+  esac
 }
 
 main "$@"
