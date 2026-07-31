@@ -1,0 +1,17 @@
+__pycache__/
+*.pyc
+.venv/
+venv/
+dist/
+build/
+*.egg-info/
+# capture artefacts / device dumps (may contain SSIDs, SIP creds, serials)
+*.pcapng
+*.bin
+/tmp/
+/board_objid_map.json
+/objid_map.json
+# the re-signed app copy and interposer build products
+tools/RODECaster-instrumented.app/
+tools/*.dylib
+.rode-sip-secret

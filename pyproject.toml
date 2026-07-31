@@ -1,0 +1,38 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "rodey"
+version = "0.1.0"
+description = "Unofficial control library, CLI and MCP server for the RØDECaster Pro II"
+readme = "README.md"
+requires-python = ">=3.9"
+license = { text = "MIT" }
+keywords = ["rode", "rodecaster", "audio", "hid", "mixer", "mcp"]
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "Intended Audience :: Developers",
+  "License :: OSI Approved :: MIT License",
+  "Programming Language :: Python :: 3.9",
+  "Topic :: Multimedia :: Sound/Audio",
+  "Topic :: System :: Hardware :: Hardware Drivers",
+]
+dependencies = ["hidapi>=0.14"]
+
+[project.optional-dependencies]
+mcp = ["mcp>=1.0"]
+dev = ["pytest>=8.0"]
+
+[project.scripts]
+rodey = "rodey.cli:main"
+rodey-mcp = "rodey.mcp_server:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/rodey"]
+
+[tool.hatch.build.targets.wheel.force-include]
+"src/rodey/data" = "rodey/data"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
