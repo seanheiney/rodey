@@ -101,16 +101,35 @@ install_rodey() {
   ln -sf "$VENV/bin/rodey-mcp" "$BIN_DIR/rodey-mcp"
 }
 
-check_path() {
-  case ":$PATH:" in
-    *":$BIN_DIR:"*) : ;;
-    *)
-      warn "$BIN_DIR is not on your PATH"
-      local rc; rc="$HOME/.zshrc"; [ -n "${BASH_VERSION:-}" ] && rc="$HOME/.bashrc"
-      printf "  add it with:\n"
-      printf "    ${B}echo 'export PATH=\"%s:\$PATH\"' >> %s && source %s${X}\n" "$BIN_DIR" "$rc" "$rc"
-      ;;
+# Which shell rc files exist / are relevant for this user.
+rc_files() {
+  local files=()
+  case "$(basename "${SHELL:-/bin/zsh}")" in
+    zsh) files+=("$HOME/.zshrc") ;;
+    bash) files+=("$HOME/.bashrc" "$HOME/.bash_profile") ;;
+    *) files+=("$HOME/.profile") ;;
   esac
+  # also update whatever already exists, so PATH is set regardless of login shell
+  for extra in "$HOME/.zshrc" "$HOME/.bashrc" "$HOME/.profile"; do
+    [ -f "$extra" ] && case " ${files[*]} " in *" $extra "*) ;; *) files+=("$extra");; esac
+  done
+  printf '%s\n' "${files[@]}"
+}
+
+ON_PATH_ALREADY=0
+PATH_CONFIGURED=0
+
+configure_path() {
+  case ":$PATH:" in *":$BIN_DIR:"*) ON_PATH_ALREADY=1; return 0 ;; esac
+  [ -n "${RODEY_NO_MODIFY_PATH:-}" ] && return 0
+  local line="export PATH=\"$BIN_DIR:\$PATH\"  # added by rodey installer"
+  local wrote=0 f
+  while IFS= read -r f; do
+    [ -e "$f" ] || : > "$f"
+    grep -Fq "added by rodey installer" "$f" 2>/dev/null && { wrote=1; continue; }
+    printf '\n%s\n' "$line" >> "$f" && wrote=1
+  done < <(rc_files)
+  [ "$wrote" = 1 ] && PATH_CONFIGURED=1
 }
 
 verify() {
@@ -130,13 +149,22 @@ main() {
   install_udev_rule
   install_rodey
   verify
-  check_path
-  printf "\n${G}${B}done.${X} try it:\n"
-  printf "    ${B}rodey channels${X}      ${DIM}# what's patched to each strip${X}\n"
-  printf "    ${B}rodey get noiseGateOn${X}\n"
-  printf "    ${B}rodey --help${X}\n\n"
-  printf "${DIM}  MCP server: add {\"command\":\"rodey-mcp\"} to your client config.${X}\n"
-  printf "${DIM}  Unofficial; not affiliated with RØDE. Firmware 1.7.x.${X}\n\n"
+  configure_path
+  printf "\n${G}${B}done.${X}\n"
+  if [ "$ON_PATH_ALREADY" = 1 ]; then
+    printf "try it now:\n"
+    printf "    ${B}rodey channels${X}      ${DIM}# what's patched to each strip${X}\n\n"
+  elif [ "$PATH_CONFIGURED" = 1 ]; then
+    printf "added ${B}rodey${X} to your PATH. start a new terminal, or run:\n"
+    printf "    ${B}export PATH=\"$BIN_DIR:\$PATH\"${X}\n"
+    printf "then:\n"
+    printf "    ${B}rodey channels${X}      ${DIM}# what's patched to each strip${X}\n\n"
+  else
+    printf "run it via its full path (PATH not modified):\n"
+    printf "    ${B}$BIN_DIR/rodey channels${X}\n\n"
+  fi
+  printf "${DIM}  more:  rodey --help   |   MCP: add {\"command\":\"rodey-mcp\"} to your client config${X}\n"
+  printf "${DIM}  unofficial; not affiliated with RØDE. firmware 1.7.x${X}\n\n"
 }
 
 main "$@"
