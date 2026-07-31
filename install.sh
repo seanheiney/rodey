@@ -18,6 +18,7 @@ PREFIX="${RODEY_PREFIX:-$HOME/.local}"
 APP_DIR="$PREFIX/share/rodey"
 BIN_DIR="$PREFIX/bin"
 VENV="$APP_DIR/venv"
+TARBALL="https://github.com/$REPO/archive/refs/heads/$BRANCH.tar.gz"
 
 # ── pretty output ─────────────────────────────────────────────────────────────
 if [ -t 1 ] && [ -z "${NO_COLOR:-}" ]; then
@@ -88,17 +89,33 @@ install_udev_rule() {
 }
 
 # ── install ───────────────────────────────────────────────────────────────────
+HAS_MCP=0
 install_rodey() {
   step "creating isolated environment in ${DIM}$VENV${X}"
   mkdir -p "$APP_DIR" "$BIN_DIR"
   "$PYTHON" -m venv "$VENV"
   "$VENV/bin/pip" install --quiet --upgrade pip
-  step "installing rodey from github.com/$REPO@$BRANCH …"
-  "$VENV/bin/pip" install --quiet --upgrade "git+https://github.com/$REPO@$BRANCH"
+
+  # Install from a source tarball, not git+https — so `git` is NOT required.
+  step "installing rodey …"
+  "$VENV/bin/pip" install --quiet --upgrade "$TARBALL"
+
+  # The MCP server needs the `mcp` package, which requires Python >= 3.10.
+  # Best-effort: never let it fail the core CLI install.
+  if "$VENV/bin/python" -c 'import sys; sys.exit(0 if sys.version_info>=(3,10) else 1)'; then
+    step "installing MCP server support …"
+    if "$VENV/bin/pip" install --quiet "mcp>=1.0,<2" 2>/dev/null        && "$VENV/bin/python" -c 'import mcp.server.fastmcp' 2>/dev/null; then
+      HAS_MCP=1
+    else
+      warn "MCP support unavailable (couldn't install 'mcp'); the CLI still works"
+    fi
+  else
+    warn "MCP server needs Python 3.10+ (you have $("$VENV/bin/python" -V 2>&1 | awk '{print $2}')); installing CLI only"
+  fi
 
   step "linking the ${B}rodey${X} command into ${DIM}$BIN_DIR${X}"
   ln -sf "$VENV/bin/rodey" "$BIN_DIR/rodey"
-  ln -sf "$VENV/bin/rodey-mcp" "$BIN_DIR/rodey-mcp"
+  [ "$HAS_MCP" = 1 ] && ln -sf "$VENV/bin/rodey-mcp" "$BIN_DIR/rodey-mcp"
 }
 
 # Which shell rc files exist / are relevant for this user.
@@ -163,7 +180,11 @@ main() {
     printf "run it via its full path (PATH not modified):\n"
     printf "    ${B}$BIN_DIR/rodey channels${X}\n\n"
   fi
-  printf "${DIM}  more:  rodey --help   |   MCP: add {\"command\":\"rodey-mcp\"} to your client config${X}\n"
+  if [ "$HAS_MCP" = 1 ]; then
+    printf "${DIM}  more:  rodey --help   |   MCP: add {\"command\":\"rodey-mcp\"} to your client config${X}\n"
+  else
+    printf "${DIM}  more:  rodey --help   |   MCP server needs Python 3.10+ (not installed)${X}\n"
+  fi
   printf "${DIM}  unofficial; not affiliated with RØDE. firmware 1.7.x${X}\n\n"
 }
 

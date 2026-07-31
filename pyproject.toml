@@ -21,7 +21,7 @@ classifiers = [
 dependencies = ["hidapi>=0.14"]
 
 [project.optional-dependencies]
-mcp = ["mcp>=1.0"]
+mcp = ["mcp>=1.0,<2"]
 dev = ["pytest>=8.0"]
 
 [project.scripts]
