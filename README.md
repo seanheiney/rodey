@@ -4,6 +4,19 @@
 
 Unofficial Python library, CLI and **MCP server** for the RØDECaster Pro II.
 
+## Install
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/seanheiney/rodey/main/install.sh | bash
+```
+
+macOS or Linux. Installs into an isolated environment, pulls in `hidapi`, and (on
+Linux) adds a udev rule for non-root access. Then:
+
+```sh
+rodey channels          # what's patched to each strip
+```
+
 RØDE ships no host API — the board is configured on its touchscreen or through their
 GUI app. This talks to it directly over its vendor USB HID interface, using a protocol
 reverse-engineered by **observing RØDE's own app**, not by guessing.
@@ -19,7 +32,7 @@ de-esser, HPF, Aphex processing, faders, mutes, routing — that is otherwise on
 reachable by tapping a touchscreen. This makes it scriptable, and lets an AI agent
 drive it through MCP.
 
-## Install
+## Install from PyPI / source
 
 ```bash
 pip install rodey          # library + CLI
