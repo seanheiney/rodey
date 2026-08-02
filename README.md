@@ -10,6 +10,8 @@ reads — over its USB HID interface. RØDE publishes no host API; this protocol
 reverse-engineered by observing RØDE's own app and the device's own notifications,
 then verified against hardware. See [docs/PROTOCOL.md](docs/PROTOCOL.md).
 
+> **Picking this back up to make changes?** Start with [docs/RESUME.md](docs/RESUME.md) — setup, code map, safety rules, and mod recipes.
+
 > ⚠️ **Unofficial and not affiliated with RØDE.** Developed against firmware **1.7.3**.
 > A firmware update may change the protocol. Read the safety notes below before writing.
 
