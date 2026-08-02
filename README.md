@@ -2,6 +2,8 @@
 
 *Like a roadie who runs the gear — but for your RØDECaster.*
 
+[![CI](https://github.com/seanheiney/rodey/actions/workflows/ci.yml/badge.svg)](https://github.com/seanheiney/rodey/actions/workflows/ci.yml) [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE) ![Python](https://img.shields.io/badge/python-3.9%2B-blue)
+
 Unofficial Python library, CLI and **MCP server** for the **RØDECaster Pro II**.
 Control the board from code — mutes, routing, per-channel processing, full state
 reads — over its USB HID interface. RØDE publishes no host API; this protocol was

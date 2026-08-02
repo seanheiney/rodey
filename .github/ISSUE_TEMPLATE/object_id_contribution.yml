@@ -1,0 +1,39 @@
+name: Object ID / property contribution
+description: Share object IDs or properties you captured (please don't guess them)
+labels: [protocol, help-wanted]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thank you for extending the map! Please capture IDs from **observed traffic**
+        (see `tools/README.md`), never by probing — writing an unknown property to a
+        guessed ID permanently mutates the device.
+  - type: input
+    id: firmware
+    attributes:
+      label: Firmware version
+    validations:
+      required: true
+  - type: dropdown
+    id: model
+    attributes:
+      label: Model
+      options: [RØDECaster Pro II, RØDECaster Duo, other]
+  - type: dropdown
+    id: method
+    attributes:
+      label: How did you capture this?
+      options:
+        - tools/harvest_objids.py (vendor app interposer)
+        - tools/capture_board.py (physical controls)
+        - other (explain below)
+    validations:
+      required: true
+  - type: textarea
+    id: data
+    attributes:
+      label: Object IDs / properties
+      description: Paste the harvester output or the objid_map entries.
+      render: json
+    validations:
+      required: true
