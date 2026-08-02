@@ -20,6 +20,12 @@ classifiers = [
 ]
 dependencies = ["hidapi>=0.14"]
 
+[project.urls]
+Homepage = "https://github.com/seanheiney/rodey"
+Repository = "https://github.com/seanheiney/rodey"
+Issues = "https://github.com/seanheiney/rodey/issues"
+Changelog = "https://github.com/seanheiney/rodey/blob/main/CHANGELOG.md"
+
 [project.optional-dependencies]
 mcp = ["mcp>=1.0,<2"]
 dev = ["pytest>=8.0"]

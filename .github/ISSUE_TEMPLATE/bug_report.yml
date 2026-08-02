@@ -1,0 +1,43 @@
+name: Bug report
+description: Something in rodey doesn't work as documented
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for the report. rodey is unofficial and reverse-engineered, so device
+        and firmware details matter a lot.
+  - type: input
+    id: firmware
+    attributes:
+      label: RØDECaster firmware version
+      description: "`rodey get systemFirmwareVersion`, or the board's About screen"
+      placeholder: "1.7.3"
+    validations:
+      required: true
+  - type: dropdown
+    id: os
+    attributes:
+      label: Operating system
+      options: [macOS, Linux]
+    validations:
+      required: true
+  - type: input
+    id: python
+    attributes:
+      label: Python version
+      placeholder: "3.11.x"
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+      description: What you ran, what you expected, what you got. Include any error output.
+    validations:
+      required: true
+  - type: checkboxes
+    id: safety
+    attributes:
+      label: Confirm
+      options:
+        - label: I did not probe object IDs or send raw bytes to report 1.
+          required: true
