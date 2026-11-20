@@ -84,7 +84,7 @@ def test_dump_values_reads_positionally():
 
 def test_obj_id_range_validated():
     with pytest.raises(ValueError):
-        p.encode_write(0x1FF, "noiseGateOn", True)
+        p.encode_write(0x10000, "noiseGateOn", True)
 
 
 def test_int_and_float_encode_differently():
