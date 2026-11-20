@@ -173,6 +173,30 @@ while ...:                        # start reading NOW, no sleep, no allocation
 Stop when reports stop arriving (a few hundred ms of idle), not on a fixed timer.
 Collecting the full tree takes about one second when drained properly.
 
+### Message framing — do not strip the zeros
+
+Every message on report 4 — a notification or the whole tree — starts **in a report
+of its own** with its `uint32_le` length, then runs across as many reports as it
+needs (255 payload bytes each). Only the unused rest of the *last* report is zero
+padding.
+
+```
+report 1:  04 | bd 73 02 00 | 02 "Rodecaster" 00 ...      length 0x273bd = 160,701
+report 2:  04 | ...continues, all 255 bytes are data...
+   ...
+report 631: 04 | ...last bytes | 00 00 00 ... padding
+```
+
+Measured from a capture of all 637 reports of one connection (firmware 1.7.3):
+two notifications, the mode reply on report 2 (`41 52 ...`, "A" + device name), the
+tree as **one message of 160,701 bytes**, then notifications again.
+
+The trap: joining the reports after stripping each one's trailing zeros looks right
+and is almost right — but zero bytes that fall on a report boundary are data. Losing
+them garbles float64 values (a compressor attack of 1e170) and, when the `00` after
+a property name goes missing, drops that entry from the positional lists, so every
+later strip is off by one. `protocol.Reassembler` reads by the length field instead.
+
 To verify a write: dump, write, dump again, diff.
 
 > Do **not** verify writes by measuring audio. On a sensitive condenser the noise floor

@@ -22,6 +22,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
   `IOHIDDeviceSetReport` interposer used to derive the protocol.
 - 56 hardware-free tests.
 
+### Fixed
+- `read_dump()` and `watch()` no longer strip the trailing zero bytes of each report.
+  Messages on report 4 are length-framed across reports (`protocol.Reassembler`);
+  stripping lost real zeros at report boundaries, which garbled values and dropped
+  entries from `dump_values()`. `read_dump()` now returns exactly the state-tree
+  message, without neighbouring notifications or the report-2 mode reply.
+
 ### Known limits
 - Fader **writes** are impossible (physical, non-motorised faders); reads work.
 - Live metering only streams under the vendor app; meter values are still in the dump.

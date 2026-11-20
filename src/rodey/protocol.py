@@ -120,6 +120,56 @@ def channel_object_id(strip: int) -> int:
 T_UINT32, T_FALSE, T_TRUE, T_FLOAT64, T_STRING = 0x01, 0x02, 0x03, 0x04, 0x05
 
 
+#: Opens the state tree: message type 0x02, then the root object's name.
+TREE_ROOT = b"\x02Rodecaster\x00"
+
+_LENGTH_BYTES = 4
+_MAX_MESSAGE_BYTES = 8 * 1024 * 1024   # far above the ~160 KB tree; larger is garbage
+
+
+def is_state_tree(body: bytes) -> bool:
+    """Whether a message body (see :class:`Reassembler`) is the full state tree."""
+    return body.startswith(TREE_ROOT)
+
+
+class Reassembler:
+    """Turn the sequence of report-4 payloads back into complete messages.
+
+    Every message starts in a report of its own with a ``uint32_le`` length, then
+    runs across as many reports as it needs. Only the unused rest of the *last*
+    report is zero padding.
+
+    So the zero bytes at the end of a report cannot simply be stripped: inside a
+    multi-report message they are data. Doing that lost real zeros of the state
+    tree at report boundaries - garbled float64 values (a compressor attack of
+    1e170) and, when the ``00`` after a property name went missing, whole entries
+    dropped from ``dump_values()``, shifting every later strip by one.
+    """
+
+    def __init__(self) -> None:
+        self._body = bytearray()
+        self._missing = 0          # bytes of the current message still to come
+
+    def feed(self, report: bytes) -> list[bytes]:
+        """Take one report as read (report ID first); return the messages it completed."""
+        if not report or report[0] != REPORT_PROP_IN:
+            return []                              # e.g. the mode reply on report 2
+        payload = bytes(report[1:])
+
+        if self._missing == 0:
+            length = int.from_bytes(payload[:_LENGTH_BYTES], "little")
+            if length == 0 or length > _MAX_MESSAGE_BYTES:
+                return []
+            self._body = bytearray()
+            self._missing = length
+            payload = payload[_LENGTH_BYTES:]
+
+        part = payload[:self._missing]
+        self._body += part
+        self._missing -= len(part)
+        return [] if self._missing else [bytes(self._body)]
+
+
 class UnsafeCommand(RuntimeError):
     """Raised when a caller tries to send a destructive mode byte."""
 

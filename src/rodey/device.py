@@ -1,6 +1,7 @@
 """Device connection and high-level API for the RØDECaster Pro II."""
 from __future__ import annotations
 
+import struct
 import time
 from typing import Any, Iterator
 
@@ -107,37 +108,40 @@ class Rodecaster:
 
     def read_dump(self, seconds: float = DUMP_SECONDS,
                   idle_ms: float = 400.0) -> bytes:
-        """Collect the state dump the handshake triggers.
+        """Collect the state tree the handshake triggers.
 
-        The dump arrives as one burst, then the device goes quiet. Two things
-        matter for getting all of it:
+        The tree arrives as one length-framed message spread over ~630 reports
+        (see :class:`protocol.Reassembler`); this returns exactly that message, so
+        notifications before and after it and the mode reply on report 2 are not
+        mixed in. Two things matter for getting all of it:
 
         * **Drain aggressively.** hidapi queues a limited number of reports; if
           the reader sleeps during the burst, reports are dropped silently. That
           is why fixed-interval reads returned wildly different sizes (138 KB one
           run, 27 KB the next) with whole sections missing. Never sleep while
           data is flowing.
-        * **Stop on idle, not on a timer.** The burst ends when reports stop
-          arriving for ``idle_ms``; ``seconds`` is only a safety cap.
+        * **Stop when the tree is complete.** If none completes, give up once
+          reports stop arriving for ``idle_ms``; ``seconds`` is the safety cap.
+          The result is then empty rather than a partial tree.
         """
         deadline = time.time() + seconds
         idle = idle_ms / 1000.0
-        chunks: list[bytes] = []
+        reassembler = p.Reassembler()
         last_data = None
 
         while time.time() < deadline:
             data = self._dev.read(256)
             if data:
-                payload = bytes(data[1:]).rstrip(b"\x00")
-                if payload:
-                    chunks.append(payload)
+                for body in reassembler.feed(bytes(data)):
+                    if p.is_state_tree(body):
+                        return body
                 last_data = time.time()
                 continue                        # no sleep - keep draining
             if last_data is None:
                 time.sleep(0.002)               # nothing yet; wait for the burst
             elif time.time() - last_data > idle:
-                break                           # burst finished
-        return b"".join(chunks)
+                break                           # went quiet without a full tree
+        return b""
 
     @property
     def state(self) -> bytes:
@@ -168,14 +172,17 @@ class Rodecaster:
         changes made on the board or by another client appear here.
         """
         end = time.time() + seconds
+        reassembler = p.Reassembler()
         while time.time() < end:
             data = self._dev.read(256)
             if not data:
                 time.sleep(0.002)
                 continue
-            prop = p.decode_notification(bytes(data[1:]).rstrip(b"\x00"))
-            if prop is not None:
-                yield prop
+            for body in reassembler.feed(bytes(data)):
+                # Not rstrip'd: the zeros of e.g. a uint32 2 or a float 0.0 are data.
+                prop = p.decode_notification(struct.pack("<I", len(body)) + body)
+                if prop is not None:
+                    yield prop
 
     # ------------------------------------------------------------------- writes
 
