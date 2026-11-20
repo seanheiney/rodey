@@ -22,6 +22,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
   `IOHIDDeviceSetReport` interposer used to derive the protocol.
 - 56 hardware-free tests.
 
+### Fixed
+- `Rodecaster.find()` also finds the board when USB multitrack is switched on: the
+  first USB port then enumerates as `0x0078` or `0x0094` instead of `0x0037`
+  (`protocol.PRODUCT_IDS`).
+
 ### Known limits
 - Fader **writes** are impossible (physical, non-motorised faders); reads work.
 - Live metering only streams under the vendor app; meter values are still in the dump.

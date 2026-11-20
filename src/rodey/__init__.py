@@ -15,6 +15,7 @@ from .device import DUMP_SECONDS, DeviceNotFound, Rodecaster
 from .protocol import (
     MODE_NORMAL,
     PRODUCT_ID,
+    PRODUCT_IDS,
     VENDOR_ID,
     Property,
     UnsafeCommand,
@@ -34,6 +35,7 @@ __all__ = [
     "DUMP_SECONDS",
     "VENDOR_ID",
     "PRODUCT_ID",
+    "PRODUCT_IDS",
     "MODE_NORMAL",
     "encode_write",
     "decode_notification",

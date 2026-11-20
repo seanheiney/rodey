@@ -44,12 +44,13 @@ class Rodecaster:
 
     @staticmethod
     def find() -> bytes:
-        for d in hid.enumerate(p.VENDOR_ID, p.PRODUCT_ID):
-            if d.get("usage_page") == p.USAGE_PAGE:
+        for d in hid.enumerate(p.VENDOR_ID):
+            if d.get("product_id") in p.PRODUCT_IDS and d.get("usage_page") == p.USAGE_PAGE:
                 return d["path"]
+        expected = ", ".join(f"0x{pid:04x}" for pid in p.PRODUCT_IDS)
         raise DeviceNotFound(
             "no RØDECaster Pro II vendor HID interface "
-            f"(expected VID 0x{p.VENDOR_ID:04x} / PID 0x{p.PRODUCT_ID:02x})"
+            f"(expected VID 0x{p.VENDOR_ID:04x}, PID one of {expected})"
         )
 
     def connect(self, capture: bool = True) -> "Rodecaster":
