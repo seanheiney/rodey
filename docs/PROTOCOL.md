@@ -47,6 +47,11 @@ USB interface 9, `bInterfaceClass = 3` (HID), vendor usage page `0xFF00`.
 Coexists with RØDE's app (which opens non-exclusively). Note `hidapi` **seizes** the
 device, so you cannot open two hidapi handles at once.
 
+The first USB port's product ID follows the multitrack setting: `19f7:0037` without
+multitrack, `19f7:0078` with one of the two multitrack switches on, `19f7:0094` with
+both. The control interface is the same in all three (`protocol.PRODUCT_IDS`). The
+second port (`19f7:0026`) exposes a vendor-page HID interface as well; it is not used.
+
 | Report ID | Direction | Size | Purpose |
 |-----------|-----------|------|---------|
 | 1 | host → device | 63 B | mode commands (single ASCII byte) |

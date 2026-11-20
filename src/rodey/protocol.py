@@ -11,7 +11,17 @@ from dataclasses import dataclass
 from typing import Any, Iterator
 
 VENDOR_ID = 0x19F7
-PRODUCT_ID = 0x37
+PRODUCT_ID = 0x37        # USB 1 with multitrack off
+
+#: Product IDs under which the first USB port ("USB 1") carries the control interface.
+#:
+#: The port re-enumerates when the multitrack setting changes, so the ID follows the
+#: mode: 0x0037 without multitrack, 0x0078 with one of the two multitrack switches on,
+#: 0x0094 with both. 0x0078 and 0x0094 were observed on firmware 1.7.3 (Linux, hidraw):
+#: the vendor HID interface sits on interface 9 with usage page 0xFF00, as with 0x0037,
+#: and the handshake and state dump work unchanged. The second port ("USB 2", 0x0026)
+#: has a vendor-page interface too, but it is not the control port and is left alone.
+PRODUCT_IDS = (0x0037, 0x0078, 0x0094)
 USAGE_PAGE = 0xFF00
 
 # Report IDs (from the HID report descriptor)
