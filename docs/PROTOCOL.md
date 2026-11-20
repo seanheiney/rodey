@@ -78,8 +78,12 @@ Property writes (report 3) and notifications (report 4) share one layout:
 uint32_le total_len | <address> | <property name> 00 | 01 <len> <payload>
 ```
 
-* **address** — `01 01 01 01 <objID>` for channel-scoped objects. Length varies
-  (pads use 8 bytes). Do not hard-code the offset.
+* **address** — `01 01 01` followed by the object's position as a small integer: one
+  length byte, then that many bytes little endian. `01 01 01 01 1c` is object `0x1C`,
+  `01 01 01 02 01 01` is object `0x0101`. The board has far more than 256 top-level
+  objects, so two-byte positions are common (most mix-bus objects of the sources
+  added later live there). Other address shapes exist (pads use 8 bytes). Do not
+  hard-code the offset.
 * **property name** — ASCII, camelCase, null-terminated.
 * **`len`** — byte count of `payload`.
 

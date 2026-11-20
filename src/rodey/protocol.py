@@ -33,6 +33,22 @@ _FORBIDDEN_MODES = {0x4D: "enters firmware update mode", 0x55: "triggers a firmw
 SESSION_OPEN = bytes([0xAD, 0x10, 0xA7, 0xB0])
 ADDR_PREFIX = bytes([0x01, 0x01, 0x01, 0x01])
 
+#: What every top-level address starts with; the object's position follows as a small
+#: integer: one length byte, then that many bytes little endian. ``ADDR_PREFIX`` is this
+#: head plus the length byte ``01`` of a one-byte position.
+#:
+#: The "object ID" is the object's position among the children of the state tree's
+#: root. There are well over 256 of them (676 on firmware 1.7.3), so positions from 256
+#: on take two bytes: ``01 01 01 02 01 01`` is object 0x0101. The board reports changes
+#: of such objects in exactly this form.
+_ADDR_HEAD = ADDR_PREFIX[:3]
+MAX_OBJ_ID = 0xFFFF
+
+
+def _encode_position(obj_id: int) -> bytes:
+    size = 1 if obj_id <= 0xFF else 2
+    return bytes([size]) + obj_id.to_bytes(size, "little")
+
 #: Channel objects are contiguous from this base: ``objID = 0x1C + strip``.
 #:
 #: Established by toggling ``channelBypassProcessing`` - a property the harvested
@@ -204,7 +220,7 @@ def encode_value(value: Any) -> bytes:
 
 def encode_write(obj_id: int, name: str, value: Any) -> bytes:
     """A property-write buffer for report 3."""
-    if not 0 <= obj_id <= 0xFF:
+    if not 0 <= obj_id <= MAX_OBJ_ID:
         raise ValueError(f"obj_id out of range: {obj_id}")
     if name in DESTRUCTIVE_PROPERTIES:
         raise UnsafeCommand(
@@ -216,7 +232,8 @@ def encode_write(obj_id: int, name: str, value: Any) -> bytes:
             f"{name!r} is read-only: the faders are physical and not motorised, so a "
             f"written value would disagree with the slider position."
         )
-    body = ADDR_PREFIX + bytes([obj_id]) + name.encode("ascii") + b"\x00" + encode_value(value)
+    body = (_ADDR_HEAD + _encode_position(obj_id) + name.encode("ascii") + b"\x00"
+            + encode_value(value))
     return _wrap(body).ljust(REPORT_PROP_SIZE, b"\x00")
 
 
@@ -252,18 +269,23 @@ def decode_notification(raw: bytes) -> Property | None:
         return None
     length = struct.unpack_from("<I", raw, 0)[0]
     body = raw[4:4 + length] if length <= len(raw) - 4 else raw[4:]
-    if len(body) < 6 or not body.startswith(ADDR_PREFIX):
+    if len(body) < 6 or not body.startswith(_ADDR_HEAD):
         return None
-    end = body.find(b"\x00", 5)
+    size = body[3]                      # length of the object's position, see _ADDR_HEAD
+    if size not in (1, 2):
+        return None
+    start = 4 + size
+    obj_id = int.from_bytes(body[4:start], "little")
+    end = body.find(b"\x00", start)
     if end < 0:
         return None
     try:
-        name = body[5:end].decode("ascii")
+        name = body[start:end].decode("ascii")
     except UnicodeDecodeError:
         return None
     if not name or not name[0].islower():
         return None
-    return Property(body[4], name, decode_value(body[end + 1:]))
+    return Property(obj_id, name, decode_value(body[end + 1:]))
 
 
 _TOKEN = re.compile(rb"[A-Za-z][A-Za-z0-9_]{3,}")

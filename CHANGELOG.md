@@ -22,6 +22,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
   `IOHIDDeviceSetReport` interposer used to derive the protocol.
 - 56 hardware-free tests.
 
+### Added
+- `encode_write()` and `decode_notification()` handle objects beyond position 255
+  (two-byte positions, `01 01 01 02 <lo> <hi>`), as the board itself reports them.
+
 ### Known limits
 - Fader **writes** are impossible (physical, non-motorised faders); reads work.
 - Live metering only streams under the vendor app; meter values are still in the dump.
